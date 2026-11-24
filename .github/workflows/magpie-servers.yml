@@ -1,0 +1,44 @@
+# Magpie GitHub servers (v1)
+# Installed by the Magpie app into YOUR OWN public repo so the streaming servers run on YOUR
+# GitHub Actions minutes (public repos are free). The code it runs is checked out from the
+# upstream Magpie commit named in the `ref` input, i.e. the same commit your app was built from.
+name: magpie-servers
+on:
+  workflow_dispatch:
+    inputs:
+      pub:
+        description: Public key of your phone (base64 DER). Not a secret.
+        required: true
+      ref:
+        description: Upstream Magpie commit to run
+        required: true
+# No concurrency group: runs overlap briefly during a hand-over, and the serving one must never be cancelled.
+permissions:
+  contents: write   # publish the encrypted tunnel info to the `tunnel` branch
+  actions: write    # start the next runner before this one ends
+jobs:
+  serve:
+    runs-on: ubuntu-latest
+    timeout-minutes: 345
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: engineermarcus/magpie
+          ref: ${{ inputs.ref }}
+          path: magpie
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Start servers
+        env:
+          PUB_B64: ${{ inputs.pub }}
+          MAGPIE_REF: ${{ inputs.ref }}
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          REF_NAME: ${{ github.event.repository.default_branch }}
+          MAGPIE_ROOT: ${{ github.workspace }}/magpie
+        run: bash "$MAGPIE_ROOT/runner/start.sh"
