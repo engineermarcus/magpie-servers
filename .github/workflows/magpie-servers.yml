@@ -1,7 +1,7 @@
 # Magpie GitHub servers (v1)
 # Installed by the Magpie app into YOUR OWN public repo so the streaming servers run on YOUR
-# GitHub Actions minutes (public repos are free). The code it runs is checked out from the
-# upstream Magpie commit named in the `ref` input, i.e. the same commit your app was built from.
+# GitHub Actions minutes (public repos are free). The code it runs is the public runner bundle for the
+# Magpie commit named in the `ref` input, i.e. the same commit your app was built from.
 name: magpie-servers
 on:
   workflow_dispatch:
@@ -21,12 +21,14 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 345
     steps:
-      - uses: actions/checkout@v4
-        with:
-          repository: engineermarcus/magpie
-          ref: ${{ inputs.ref }}
-          path: magpie
-          persist-credentials: false
+      - name: Get Magpie server code
+        env:
+          REF: ${{ inputs.ref }}
+        run: |
+          # Public release asset, so this works whether or not the source repo is private.
+          if ! printf '%s' "$REF" | grep -Eq '^[0-9a-f]{40}$'; then echo "bad ref"; exit 1; fi
+          mkdir magpie
+          curl -fsSL --retry 3 "https://github.com/engineermarcus/magpie-releases/releases/download/runner-bundles/magpie-runner-${REF}.tar.gz" | tar -xz -C magpie
       - uses: actions/setup-node@v4
         with:
           node-version: 22
